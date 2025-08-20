@@ -10,10 +10,8 @@ app/
 ├── loading.tsx                     # Global loading UI
 ├── not-found.tsx                   # 404 page
 │
-├── (auth)/                         # Route group for auth pages
-│   ├── login/
-│   │   └── page.tsx               # Login page (/login)
-│   └── layout.tsx                 # Auth-specific layout
+├── signup/
+│   └── page.tsx                   # Signup page (/signup)
 │
 ├── onboarding/
 │   ├── page.tsx                   # Role selection (/onboarding)
@@ -74,8 +72,12 @@ app/
 │
 └── components/                    # Shared components
     ├── ui/                        # Shadcn/ui components ✅ (exists)
+    ├── auth/                      # Authentication components
+    │   ├── LoginModal.tsx        # Login popup modal
+    │   ├── AuthProvider.tsx      # Authentication context
+    │   └── LoginButton.tsx       # Login trigger button
     ├── VoiceInput.tsx            # Voice input component
-    ├── Header.tsx                # Global header
+    ├── Header.tsx                # Global header with login button
     ├── Footer.tsx                # Global footer
     └── ProtectedRoute.tsx        # Authentication wrapper
 ```
@@ -91,7 +93,7 @@ app/
 - [ ] `app/not-found.tsx` - 404 error page
 
 #### Shared Components
-- [ ] `components/Header.tsx` - Navigation header
+- [ ] `components/Header.tsx` - Navigation header with login button
 - [ ] `components/Footer.tsx` - Site footer
 - [ ] `components/ProtectedRoute.tsx` - Authentication wrapper
 
@@ -99,10 +101,13 @@ app/
 **Priority: HIGH - User flow foundation**
 
 #### Authentication
-- [ ] `app/(auth)/` - Create auth route group folder
-- [ ] `app/(auth)/layout.tsx` - Auth pages layout
-- [ ] `app/(auth)/login/` - Create login folder
-- [ ] `app/(auth)/login/page.tsx` - Login page
+- [ ] `app/signup/` - Create signup folder
+- [ ] `app/signup/page.tsx` - Signup page
+- [ ] `components/auth/` - Create auth components folder
+- [ ] `components/auth/LoginModal.tsx` - Login popup modal
+- [ ] `components/auth/AuthProvider.tsx` - Authentication context
+- [ ] `components/auth/LoginButton.tsx` - Login trigger button
+- [ ] Update `components/Header.tsx` - Add login button integration
 
 #### Onboarding Flow
 - [ ] `app/onboarding/` - Create onboarding folder
