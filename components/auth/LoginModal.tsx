@@ -4,7 +4,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { login, signup, signInWithGoogle } from "@/app/actions/auth"
+import { login, signup, signInWithGoogle, signUpWithGoogle } from "@/app/actions/auth"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 
@@ -83,7 +83,7 @@ function LoginForm({
           </div>
         </div>
       </form>
-      <form action={signInWithGoogle}>
+      <form action={isSignUp ? signUpWithGoogle : signInWithGoogle}>
         <Button variant="outline" type="submit" className="w-full">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" className="h-4 w-4 mr-2">
             <path

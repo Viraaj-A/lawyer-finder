@@ -1,10 +1,22 @@
-"use client";
-
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { LoginButton } from "@/components/auth/LoginButton";
+import { createClient } from "@/lib/supabase/server";
+import { signOut } from "@/app/actions/auth";
+import { Button } from "@/components/ui/button";
 
-export function Header() {
+export async function Header() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  // Get initials for avatar
+  const getInitials = (email: string) => {
+    const parts = email.split('@')[0].split('.');
+    if (parts.length > 1) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return email.substring(0, 2).toUpperCase();
+  };
+  
   return (
     <header className="flex items-center justify-between whitespace-nowrap border-b px-10 py-3 bg-white shadow-sm">
       <div className="flex items-center gap-4">
@@ -45,7 +57,25 @@ export function Header() {
         </Link>
       </nav>
       
-      <LoginButton />
+      {user ? (
+        <div className="flex items-center space-x-4">
+          <form action={signOut}>
+            <Button variant="ghost" size="sm" type="submit">
+              Sign out
+            </Button>
+          </form>
+          <div className="flex items-center space-x-3">
+            <span className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-semibold">
+              {getInitials(user.email || '')}
+            </span>
+            <div className="text-right">
+              <p className="text-sm text-muted-foreground">{user.email}</p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <LoginButton />
+      )}
     </header>
   );
 }

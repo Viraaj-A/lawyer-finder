@@ -66,10 +66,11 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 **Purpose**: Handle auth operations securely on the server
 
 **Actions Created**:
-- `login(formData)` - Email/password login
-- `signup(formData)` - User registration
+- `login(formData)` - Email/password login, redirects to home page
+- `signup(formData)` - User registration, redirects to onboarding page
 - `signOut()` - User logout
-- `signInWithGoogle()` - OAuth Google login
+- `signInWithGoogle()` - OAuth Google login, redirects to home page
+- `signUpWithGoogle()` - OAuth Google signup, redirects to onboarding page
 
 **Note**: These are NOT from Supabase documentation. They're a Next.js pattern for handling form submissions securely.
 
@@ -77,42 +78,59 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
 **Purpose**: Handle OAuth redirects
 - Exchanges auth codes for sessions
 - Handles redirects from OAuth providers (Google, etc.)
+- Checks for signup intent flag and redirects to onboarding if present
+- Login redirects to home page, signup redirects to onboarding page
 
 ### UI Components
 
-#### 1. LoginForm (`components/auth/LoginForm.tsx`)
+#### 1. LoginModal (`components/auth/LoginModal.tsx`)
 **Features**:
+- Combined login/signup form in modal dialog
+- Toggles between login and signup modes
 - Email/password input fields
-- Google OAuth button
-- Error handling
-- Loading states
-- Redirects to `/dashboard/user` on success
-
-#### 2. LoginModal (`components/auth/LoginModal.tsx`)
-**Features**:
-- Dialog wrapper for LoginForm
-- Closes automatically on successful login
+- Google OAuth button (uses different actions based on mode)
+- Closes automatically on successful auth
 - Triggered by LoginButton
 
-#### 3. LoginButton (`components/auth/LoginButton.tsx`)
+#### 2. LoginButton (`components/auth/LoginButton.tsx`)
 **Features**:
 - Opens LoginModal when clicked
-- Configurable styling through props
+- Simple link-style button
 - Used in Header component
+
+#### 3. Header (`components/Header.tsx`)
+**Features**:
+- Shows LoginButton when not authenticated
+- Shows user avatar, email, and logout button when authenticated
+- Server-side auth check for immediate state
 
 ## Authentication Methods
 
 ### 1. Email/Password Authentication
-- User enters email and password
-- Validated through Supabase
-- Session created on success
-- Cookies set for persistence
+**Login Flow**:
+- User enters email and password in modal
+- Calls `login()` server action
+- Redirects to home page on success
+
+**Signup Flow**:
+- User enters email and password in modal (signup mode)
+- Calls `signup()` server action
+- Redirects to onboarding page for role selection
 
 ### 2. Google OAuth
-- User clicks "Continue with Google"
+**Login Flow**:
+- User clicks "Continue with Google" in login mode
+- Calls `signInWithGoogle()` action
 - Redirected to Google for authentication
 - Returns to `/auth/callback` with auth code
-- Session created from auth code
+- Redirects to home page
+
+**Signup Flow**:
+- User clicks "Continue with Google" in signup mode
+- Calls `signUpWithGoogle()` action (includes `?signup=true` flag)
+- Redirected to Google for authentication
+- Returns to `/auth/callback?signup=true` with auth code
+- Redirects to onboarding page for role selection
 
 ## Security Features
 
@@ -146,15 +164,16 @@ User Redirected to Dashboard
 3. `middleware.ts` - Auth middleware
 4. `app/actions/auth.ts` - Server actions for auth
 5. `app/auth/callback/route.ts` - OAuth callback handler
-6. `components/ui/input.tsx` - Input component
-7. `components/ui/label.tsx` - Label component
-8. `components/ui/textarea.tsx` - Textarea component
+6. `app/onboarding/page.tsx` - Role selection page for new users
+7. `components/ui/input.tsx` - Input component
+8. `components/ui/label.tsx` - Label component
+9. `components/ui/card.tsx` - Card component
 
 ### Modified Files
-1. `components/auth/AuthProvider.tsx` - Integrated Supabase
-2. `components/auth/LoginForm.tsx` - Added Supabase auth
-3. `components/auth/LoginModal.tsx` - Added success callback
-4. `app/layout.tsx` - Added AuthProvider wrapper
+1. `components/auth/LoginModal.tsx` - Unified login/signup modal with Google OAuth intent
+2. `components/auth/LoginButton.tsx` - Simplified to open modal
+3. `components/Header.tsx` - Added authenticated user display and logout
+4. `app/layout.tsx` - Removed AuthProvider wrapper (simplified)
 5. `package.json` - Added Supabase dependencies
 
 ## Dependencies Added
@@ -184,13 +203,15 @@ User Redirected to Dashboard
 ## Testing Checklist
 
 - [ ] Email/password login works
-- [ ] Google OAuth login works (if configured)
-- [ ] Logout functionality works
+- [WORKS ] Google OAuth login works (if configured)
+- [WORKS ] Logout functionality works
 - [ ] Protected routes redirect when not authenticated
-- [ ] Auth persists on page refresh
-- [ ] Auth syncs across browser tabs
+- [WORKS ] Auth persists on page refresh
+- [WORKS ] Auth syncs across browser tabs
 - [ ] Error messages display correctly
 - [ ] Loading states show during auth operations
+- [FIXED] Google signup now properly redirects to onboarding page via signup intent flag
+- [ ] If user signs in, does not finish onboarding, then goes back to main page - if they click submit legal issue, then they should be taken to finish the onboarding section 
 
 ## Common Issues & Solutions
 
@@ -199,9 +220,6 @@ User Redirected to Dashboard
 
 ### Issue: Google login redirects to wrong URL
 **Solution**: Update OAuth redirect URL in Supabase dashboard
-
-### Issue: User stays logged in after logout
-**Solution**: Clear browser cookies and check middleware is running
 
 ### Issue: Protected routes not redirecting
 **Solution**: Ensure middleware.ts matcher includes your routes
@@ -218,17 +236,11 @@ User Redirected to Dashboard
    - Resend confirmation emails
    - Handle unverified users
 
-3. **Add Role-Based Access**
-   - Implement lawyer vs individual role checks
-   - Create role-specific redirects
-   - Add admin role support
+3. **Check if user already has an account**
+   - LogIn function should not work if the user account does not exist but it currently does 
+   - If the user signs up but quits before they complete their profile, either lawyer or individual, when they next sign in they should still be redirected to complete their onboarding 
 
-4. **Add Social Logins**
-   - Facebook OAuth
-   - Apple Sign In
-   - Microsoft OAuth
-
-5. **Improve Error Handling**
+4. **Improve Error Handling**
    - More specific error messages
    - Retry logic for network errors
    - Better offline support

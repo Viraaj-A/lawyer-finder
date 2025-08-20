@@ -12,14 +12,27 @@ export async function login(formData: FormData) {
     password: formData.get('password') as string,
   }
 
-  const { error } = await supabase.auth.signInWithPassword(data)
+  const { error, data: authData } = await supabase.auth.signInWithPassword(data)
 
   if (error) {
     redirect(`/login?message=${encodeURIComponent(error.message)}`)
   }
 
+  // Check if user has completed onboarding
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('onboarding_completed')
+    .eq('id', authData.user.id)
+    .single()
+
   revalidatePath('/', 'layout')
-  redirect('/dashboard')
+  
+  // If onboarding not complete, send to onboarding
+  if (!profile?.onboarding_completed) {
+    redirect('/onboarding')
+  }
+  
+  redirect('/')
 }
 
 export async function signup(formData: FormData) {
@@ -37,7 +50,7 @@ export async function signup(formData: FormData) {
   }
 
   revalidatePath('/', 'layout')
-  redirect('/dashboard')
+  redirect('/onboarding')
 }
 
 export async function signOut() {
@@ -60,6 +73,25 @@ export async function signInWithGoogle() {
     provider: 'google',
     options: {
       redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
+    },
+  })
+
+  if (error) {
+    redirect(`/login?message=${encodeURIComponent(error.message)}`)
+  }
+
+  if (data.url) {
+    redirect(data.url)
+  }
+}
+
+export async function signUpWithGoogle() {
+  const supabase = await createClient()
+  
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback?signup=true`,
     },
   })
 

@@ -10,15 +10,15 @@ app/
 ├── loading.tsx                     # Global loading UI
 ├── not-found.tsx                   # 404 page
 │
-├── signup/
-│   └── page.tsx                   # Signup page (/signup)
+├── login/
+│   └── page.tsx                   # Login/signup page (/login) ✅ (exists, unified modal)
 │
 ├── onboarding/
-│   ├── page.tsx                   # Role selection (/onboarding)
+│   ├── page.tsx                   # Role selection (/onboarding) ✅ (exists, saves role to DB)
 │   ├── individual/
-│   │   └── page.tsx               # Individual form (/onboarding/individual)
+│   │   └── page.tsx               # Individual profile form (/onboarding/individual) ✅ (exists, saves to DB)
 │   └── lawyer/
-│       └── page.tsx               # Lawyer form (/onboarding/lawyer)
+│       └── page.tsx               # Lawyer profile form (/onboarding/lawyer) - future
 │
 ├── search/
 │   ├── page.tsx                   # Lawyer search (/search)
@@ -46,7 +46,7 @@ app/
 │           └── LawyerList.tsx
 │
 ├── profile/
-│   └── page.tsx                   # Profile settings (/profile)
+│   └── page.tsx                   # Profile settings (/profile) - future
 │
 ├── messages/
 │   ├── page.tsx                   # Messages overview (/messages)
@@ -72,13 +72,15 @@ app/
 │
 └── components/                    # Shared components
     ├── ui/                        # Shadcn/ui components ✅ (exists)
-    ├── auth/                      # Authentication components
-    │   ├── LoginModal.tsx        # Login popup modal
-    │   ├── AuthProvider.tsx      # Authentication context
-    │   └── LoginButton.tsx       # Login trigger button
+    ├── auth/                      # Authentication components ✅ (exists)
+    │   ├── LoginModal.tsx        # Login/signup modal ✅ (exists)
+    │   └── LoginButton.tsx       # Login trigger button ✅ (exists)
+    ├── profile/                   # Profile components ✅ (exists)
+    │   ├── language-selector.tsx # Language multi-select ✅ (exists)
+    │   └── location-autocomplete.tsx # Google Places autocomplete ✅ (exists)
     ├── VoiceInput.tsx            # Voice input component
-    ├── Header.tsx                # Global header with login button
-    ├── Footer.tsx                # Global footer
+    ├── Header.tsx                # Global header with auth state ✅ (exists)
+    ├── Footer.tsx                # Global footer ✅ (exists)
     └── ProtectedRoute.tsx        # Authentication wrapper
 ```
 
@@ -88,34 +90,40 @@ app/
 **Priority: HIGH - Build these first**
 
 #### Core App Structure
-- [ ] `app/layout.tsx` - Root layout with global providers
+- [x] `app/layout.tsx` - Root layout ✅ (exists)
 - [ ] `app/loading.tsx` - Global loading component
 - [ ] `app/not-found.tsx` - 404 error page
 
 #### Shared Components
-- [ ] `components/Header.tsx` - Navigation header with login button
-- [ ] `components/Footer.tsx` - Site footer
+- [x] `components/Header.tsx` - Navigation header with auth state ✅ (exists)
+- [x] `components/Footer.tsx` - Site footer ✅ (exists)
 - [ ] `components/ProtectedRoute.tsx` - Authentication wrapper
 
 ### Phase 2: Authentication & Onboarding
 **Priority: HIGH - User flow foundation**
 
 #### Authentication
-- [ ] `app/signup/` - Create signup folder
-- [ ] `app/signup/page.tsx` - Signup page
-- [ ] `components/auth/` - Create auth components folder
-- [ ] `components/auth/LoginModal.tsx` - Login popup modal
-- [ ] `components/auth/AuthProvider.tsx` - Authentication context
-- [ ] `components/auth/LoginButton.tsx` - Login trigger button
-- [ ] Update `components/Header.tsx` - Add login button integration
+- [x] `app/login/` - Login page folder ✅ (exists)
+- [x] `app/login/page.tsx` - Unified login/signup page ✅ (exists)
+- [x] `components/auth/` - Auth components folder ✅ (exists)
+- [x] `components/auth/LoginModal.tsx` - Login/signup modal ✅ (exists)
+- [x] `components/auth/LoginButton.tsx` - Login trigger button ✅ (exists)
+- [x] `app/actions/auth.ts` - Server actions for auth ✅ (exists)
+- [x] `app/auth/callback/route.ts` - OAuth callback ✅ (exists)
+- [x] `middleware.ts` - Route protection ✅ (exists)
+- [x] `lib/supabase/` - Supabase client setup ✅ (exists)
+- [x] Update `components/Header.tsx` - Shows auth state ✅ (completed)
 
 #### Onboarding Flow
-- [ ] `app/onboarding/` - Create onboarding folder
-- [ ] `app/onboarding/page.tsx` - Role selection page
-- [ ] `app/onboarding/individual/` - Create individual folder
-- [ ] `app/onboarding/individual/page.tsx` - Individual profile form
-- [ ] `app/onboarding/lawyer/` - Create lawyer folder
-- [ ] `app/onboarding/lawyer/page.tsx` - Lawyer profile form
+- [x] `app/onboarding/` - Create onboarding folder ✅
+- [x] `app/onboarding/page.tsx` - Role selection (saves to profiles table) ✅
+- [x] `app/onboarding/individual/` - Individual profile folder ✅
+- [x] `app/onboarding/individual/page.tsx` - Individual profile form (saves to individual_profiles table) ✅
+- [x] `components/profile/language-selector.tsx` - Multi-select language component ✅
+- [x] `components/profile/location-autocomplete.tsx` - Google Places autocomplete ✅
+- [x] **Database Schema**: profiles + individual_profiles tables with RLS ✅
+- [ ] `app/onboarding/lawyer/` - Lawyer folder (future)
+- [ ] `app/onboarding/lawyer/page.tsx` - Lawyer profile form (future)
 
 ### Phase 3: Core Features
 **Priority: MEDIUM - Main functionality**
@@ -208,6 +216,33 @@ app/
 4. **Dashboards** (Phase 4) - User and lawyer management
 5. **Workflow** (Phase 5) - Legal issues and messaging
 6. **Polish** (Phase 6) - Support and API optimization
+
+## Database Schema (Supabase)
+
+### Implemented Tables
+- **`profiles`** - Main user profiles (1:1 with auth.users)
+  - `id` (uuid, FK to auth.users)
+  - `role` ('individual' | 'lawyer' | null)  
+  - `onboarding_completed` (boolean, default false)
+  - Auto-created on user signup via trigger
+
+- **`individual_profiles`** - Individual user data (1:1 with profiles where role='individual')
+  - `id` (uuid, FK to profiles)
+  - `first_name`, `last_name` (text)
+  - `age` (integer), `gender` (text)
+  - `location` (text) - suburb/city format
+  - `languages` (text[]) - array of languages
+  - `accessibility_needs` (text[]) - array of accessibility requirements
+
+### Row Level Security
+- Users can only read/write their own profile data
+- Policies enforced on both tables
+
+## Authentication Flow
+1. **Signup** → Creates auth.users record → Trigger creates profiles record → Redirects to onboarding
+2. **Onboarding** → User selects role → Saves to profiles.role → Redirects to role-specific form  
+3. **Profile Form** → Individual fills profile → Saves to individual_profiles → Marks onboarding_completed=true
+4. **Future Logins** → Checks onboarding_completed → Redirects completed users to home, incomplete to onboarding
 
 ### Next Steps
 Start with Phase 1 to establish your foundation, then move through phases sequentially. Each phase builds on the previous one, ensuring a stable development process.
