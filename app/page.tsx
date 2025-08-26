@@ -4,26 +4,67 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
-import { Paperclip, Mic } from "lucide-react";
+import VoiceInput from "@/components/VoiceInput";
+import { submitIssue } from "@/app/actions/issues";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 
 export default function Home() {
   const [legalIssue, setLegalIssue] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
+  const router = useRouter();
 
-  const handleSubmitIssue = () => {
-    // TODO(human): Implement issue submission logic
-    console.log("Submitting issue:", legalIssue);
+  const handleSubmitIssue = async () => {
+    // Validation
+    if (!legalIssue.trim()) {
+      setError("Please describe your legal issue");
+      return;
+    }
+    
+    setIsSubmitting(true);
+    setError(null);
+    
+    try {
+      // Submit to database
+      const result = await submitIssue({
+        text: legalIssue
+      });
+      
+      if (result.error) {
+        setError(result.error);
+        // If not logged in, redirect to login
+        if (result.error.includes("logged in")) {
+          setTimeout(() => router.push("/login"), 2000);
+        }
+      } else {
+        setSuccess(true);
+        // Clear form
+        setLegalIssue("");
+        // Show success message
+        setTimeout(() => {
+          setSuccess(false);
+          // Optionally redirect to dashboard
+          router.push("/dashboard/individual");
+        }, 2000);
+      }
+    } catch (err) {
+      console.error("Submission error:", err);
+      setError("Something went wrong. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSearchLawyers = () => {
     console.log("Searching lawyers for:", legalIssue);
   };
 
-  const handleVoiceInput = () => {
-    console.log("Voice input clicked");
-  };
-
-  const handleFileAttach = () => {
-    console.log("File attach clicked");
+  const handleVoiceTranscript = (transcript: string) => {
+    // Replace entire text with new transcript
+    setLegalIssue(transcript);
+    // To append instead, use: setLegalIssue(prev => prev ? `${prev} ${transcript}` : transcript)
   };
 
   return (
@@ -47,6 +88,19 @@ export default function Home() {
 
           <Card className="z-10 w-full max-w-2xl bg-white/95 backdrop-blur-sm p-6 shadow-xl">
             <div className="flex flex-col gap-4">
+              {/* Success Message */}
+              {success && (
+                <div className="bg-green-50 border border-green-200 text-green-800 rounded-lg p-3 text-sm">
+                  ✓ Issue submitted successfully! Redirecting to dashboard...
+                </div>
+              )}
+              
+              {/* Error Message */}
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-3 text-sm">
+                  {error}
+                </div>
+              )}
               <div className="relative flex flex-col">
                 <label className="sr-only" htmlFor="legal-issue">
                   Describe your legal issue
@@ -61,24 +115,10 @@ export default function Home() {
                 
                 <div className="flex items-center justify-between mt-4">
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={handleFileAttach}
-                      className="rounded-full hover:bg-secondary"
-                      aria-label="Attach file"
-                    >
-                      <Paperclip className="h-5 w-5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={handleVoiceInput}
-                      className="rounded-full hover:bg-secondary"
-                      aria-label="Record voice message"
-                    >
-                      <Mic className="h-5 w-5" />
-                    </Button>
+                    <VoiceInput 
+                      onTranscript={handleVoiceTranscript}
+                      provider="google-cloud"
+                    />
                   </div>
                   
                   <div className="flex items-center gap-2">
@@ -86,14 +126,23 @@ export default function Home() {
                       variant="secondary"
                       onClick={handleSearchLawyers}
                       className="font-semibold"
+                      disabled={isSubmitting}
                     >
                       Search Lawyers
                     </Button>
                     <Button
                       onClick={handleSubmitIssue}
                       className="font-bold"
+                      disabled={isSubmitting || !legalIssue.trim()}
                     >
-                      Submit Issue
+                      {isSubmitting ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Submitting...
+                        </>
+                      ) : (
+                        'Submit Issue'
+                      )}
                     </Button>
                   </div>
                 </div>

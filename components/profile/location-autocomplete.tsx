@@ -9,13 +9,15 @@ interface LocationAutocompleteProps {
   onLocationSelect?: (location: string) => void
   name?: string
   id?: string
+  fullAddress?: boolean
 }
 
 export default function LocationAutocomplete({ 
   placeholder = "e.g., Remuera, Auckland",
   onLocationSelect,
   name = "location",
-  id = "location"
+  id = "location",
+  fullAddress = false
 }: LocationAutocompleteProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [value, setValue] = useState('')
@@ -33,38 +35,57 @@ export default function LocationAutocomplete({
           {
             types: ['geocode', 'establishment'],
             componentRestrictions: { country: 'nz' },
-            fields: ['address_components', 'name']
+            fields: fullAddress 
+              ? ['formatted_address', 'name'] 
+              : ['address_components', 'name']
           }
         )
 
         autocompleteInstance.addListener('place_changed', () => {
           const place = autocompleteInstance.getPlace()
-          if (place && place.address_components) {
-            // Extract suburb and city from address components
-            let suburb = ''
-            let city = ''
-            
-            place.address_components.forEach((component: any) => {
-              if (component.types.includes('sublocality') || 
-                  component.types.includes('sublocality_level_1') ||
-                  component.types.includes('neighborhood')) {
-                suburb = component.long_name
+          
+          if (fullAddress) {
+            // For lawyers, use the full formatted address
+            if (place && place.formatted_address) {
+              const formattedLocation = place.formatted_address
+              setValue(formattedLocation)
+              
+              if (inputRef.current) {
+                inputRef.current.value = formattedLocation
               }
-              if (component.types.includes('locality')) {
-                city = component.long_name
+              
+              if (onLocationSelect) {
+                onLocationSelect(formattedLocation)
               }
-            })
-            
-            // Format as "Suburb, City" or just "City" if no suburb
-            const formattedLocation = suburb ? `${suburb}, ${city}` : city
-            setValue(formattedLocation)
-            
-            if (inputRef.current) {
-              inputRef.current.value = formattedLocation
             }
-            
-            if (onLocationSelect) {
-              onLocationSelect(formattedLocation)
+          } else {
+            // For individuals, extract only suburb and city
+            if (place && place.address_components) {
+              let suburb = ''
+              let city = ''
+              
+              place.address_components.forEach((component: any) => {
+                if (component.types.includes('sublocality') || 
+                    component.types.includes('sublocality_level_1') ||
+                    component.types.includes('neighborhood')) {
+                  suburb = component.long_name
+                }
+                if (component.types.includes('locality')) {
+                  city = component.long_name
+                }
+              })
+              
+              // Format as "Suburb, City" or just "City" if no suburb
+              const formattedLocation = suburb ? `${suburb}, ${city}` : city
+              setValue(formattedLocation)
+              
+              if (inputRef.current) {
+                inputRef.current.value = formattedLocation
+              }
+              
+              if (onLocationSelect) {
+                onLocationSelect(formattedLocation)
+              }
             }
           }
         })
@@ -72,7 +93,7 @@ export default function LocationAutocomplete({
     }).catch(err => {
       console.error('Error loading Google Maps:', err)
     })
-  }, [])
+  }, [fullAddress, onLocationSelect])
 
   return (
     <Input

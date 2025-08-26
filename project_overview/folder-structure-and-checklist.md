@@ -32,11 +32,21 @@ app/
 │       └── loading.tsx            # Loading state for lawyer profile
 │
 ├── dashboard/
-│   ├── user/
-│   │   └── page.tsx               # User dashboard (/dashboard/user)
+│   ├── individual/
+│   │   ├── page.tsx               # My Issues page (/dashboard/individual) ✅
+│   │   ├── profile/
+│   │   │   └── page.tsx           # My Profile page (/dashboard/individual/profile) ✅
+│   │   └── settings/
+│   │       └── page.tsx           # Settings page (/dashboard/individual/settings) ✅
 │   ├── lawyer/
-│   │   └── page.tsx               # Lawyer dashboard (/dashboard/lawyer)
-│   └── layout.tsx                 # Dashboard layout with navigation
+│   │   ├── page.tsx               # Cases page (/dashboard/lawyer) ✅
+│   │   ├── profile/
+│   │   │   └── page.tsx           # Lawyer Profile page (/dashboard/lawyer/profile) ✅
+│   │   └── settings/
+│   │       └── page.tsx           # Lawyer Settings page (/dashboard/lawyer/settings) ✅
+│   ├── layout.tsx                 # Dashboard layout with navigation ✅
+│   └── components/
+│       └── DashboardSidebar.tsx   # Shared sidebar component ✅
 │
 ├── issues/
 │   └── [id]/
@@ -70,6 +80,14 @@ app/
 │   └── search/
 │       └── route.ts              # POST /api/search
 │
+├── lib/
+│   ├── constants/
+│   │   └── practice-areas.ts     # Practice areas configuration ✅
+│   ├── supabase/                  # Supabase client setup ✅ (exists)
+│   └── voice-to-text/             # Voice-to-text adapter pattern
+│       ├── adapter.ts             # Abstract interface for voice APIs
+│       └── implementations/      # Concrete API implementations
+│
 └── components/                    # Shared components
     ├── ui/                        # Shadcn/ui components ✅ (exists)
     ├── auth/                      # Authentication components ✅ (exists)
@@ -78,7 +96,7 @@ app/
     ├── profile/                   # Profile components ✅ (exists)
     │   ├── language-selector.tsx # Language multi-select ✅ (exists)
     │   └── location-autocomplete.tsx # Google Places autocomplete ✅ (exists)
-    ├── VoiceInput.tsx            # Voice input component
+    ├── VoiceInput.tsx            # Modular voice input component
     ├── Header.tsx                # Global header with auth state ✅ (exists)
     ├── Footer.tsx                # Global footer ✅ (exists)
     └── ProtectedRoute.tsx        # Authentication wrapper
@@ -117,20 +135,26 @@ app/
 #### Onboarding Flow
 - [x] `app/onboarding/` - Create onboarding folder ✅
 - [x] `app/onboarding/page.tsx` - Role selection (saves to profiles table) ✅
+- [x] `app/onboarding/page.tsx` - Role selection with auto-submit on selection ✅ 
 - [x] `app/onboarding/individual/` - Individual profile folder ✅
 - [x] `app/onboarding/individual/page.tsx` - Individual profile form (saves to individual_profiles table) ✅
 - [x] `components/profile/language-selector.tsx` - Multi-select language component ✅
 - [x] `components/profile/location-autocomplete.tsx` - Google Places autocomplete ✅
 - [x] **Database Schema**: profiles + individual_profiles tables with RLS ✅
-- [ ] `app/onboarding/lawyer/` - Lawyer folder (future)
-- [ ] `app/onboarding/lawyer/page.tsx` - Lawyer profile form (future)
+- [x] `app/onboarding/lawyer/` - Lawyer folder ✅
+- [x] `app/onboarding/lawyer/page.tsx` - Lawyer profile form (saves to lawyer_profiles table) ✅
+- [x] `app/onboarding/individual`, `app/onboarding/lawyer`  - Create language autocomplete API as currently its just a few languages. 
 
 ### Phase 3: Core Features
 **Priority: MEDIUM - Main functionality**
 
 #### Landing Page Enhancements
-- [ ] `components/VoiceInput.tsx` - Voice input component
-- [ ] Update `app/page.tsx` - Enhance with voice input functionality
+- [ ] `components/VoiceInput.tsx` - Modular voice input component (replaceable API)
+- [ ] `lib/voice-to-text/` - Voice-to-text API adapter folder
+- [ ] `lib/voice-to-text/adapter.ts` - Abstract interface for voice APIs
+- [ ] `lib/voice-to-text/implementations/` - Concrete implementations folder
+- [ ] Update `app/page.tsx` - Integrate voice input
+- [ ] Create dummy issue data structure (text only)
 
 #### Search Functionality
 - [ ] `app/search/` - Create search folder
@@ -149,16 +173,22 @@ app/
 **Priority: MEDIUM - User management**
 
 #### Dashboard Structure
-- [ ] `app/dashboard/` - Create dashboard folder
-- [ ] `app/dashboard/layout.tsx` - Dashboard navigation layout
-- [ ] `app/dashboard/user/` - Create user dashboard folder
-- [ ] `app/dashboard/user/page.tsx` - User dashboard page
-- [ ] `app/dashboard/lawyer/` - Create lawyer dashboard folder
-- [ ] `app/dashboard/lawyer/page.tsx` - Lawyer dashboard page
+- [x] `app/dashboard/` - Create dashboard folder ✅
+- [x] `app/dashboard/layout.tsx` - Dashboard navigation layout ✅
+- [x] `app/dashboard/components/DashboardSidebar.tsx` - Sidebar navigation ✅
+- [x] `app/dashboard/individual/` - Create individual dashboard folder ✅
+- [x] `app/dashboard/individual/page.tsx` - My Issues page (landing after onboarding) ✅
+- [x] `app/dashboard/individual/profile/page.tsx` - My Profile page ✅
+- [x] `app/dashboard/individual/settings/page.tsx` - Settings page ✅
+- [x] `app/dashboard/lawyer/` - Create lawyer dashboard folder ✅
+- [x] `app/dashboard/lawyer/page.tsx` - Cases page ✅
+- [x] `app/dashboard/lawyer/profile/page.tsx` - Lawyer Profile page ✅
+- [x] `app/dashboard/lawyer/settings/page.tsx` - Lawyer Settings page ✅
 
 #### Profile Management
-- [ ] `app/profile/` - Create profile folder
-- [ ] `app/profile/page.tsx` - Profile settings page
+- [x] Profile management integrated into dashboard structure ✅
+- [x] Individual profiles at `/dashboard/individual/profile` ✅
+- [x] Lawyer profiles at `/dashboard/lawyer/profile` ✅
 
 ### Phase 5: Legal Issues & Communication
 **Priority: MEDIUM - Core workflow**
@@ -185,9 +215,9 @@ app/
 - [ ] `app/help/page.tsx` - Help and support page
 
 #### API Routes
-- [ ] `app/api/` - Create API folder
-- [ ] `app/api/auth/` - Create auth API folder
-- [ ] `app/api/auth/route.ts` - Authentication endpoints
+- [X] `app/api/` - Create API folder
+- [X] `app/api/auth/` - Create auth API folder
+- [X] `app/api/auth/route.ts` - Authentication endpoints
 - [ ] `app/api/lawyers/` - Create lawyers API folder
 - [ ] `app/api/lawyers/route.ts` - Lawyers list endpoint
 - [ ] `app/api/lawyers/[id]/` - Create dynamic lawyer API folder
@@ -198,6 +228,24 @@ app/
 - [ ] `app/api/issues/[id]/route.ts` - Individual issue endpoint
 - [ ] `app/api/search/` - Create search API folder
 - [ ] `app/api/search/route.ts` - Search endpoint
+
+## Temporary Implementation Notes
+
+### Issue Submission Structure
+The landing page now saves submissions directly to the database:
+```typescript
+interface IssueSubmission {
+  text: string;        // Issue description from textarea or voice input
+}
+```
+
+### Voice-to-Text Modular Architecture
+The voice input feature uses an adapter pattern for easy API replacement:
+- **Interface**: `lib/voice-to-text/adapter.ts` defines the contract
+- **Implementations**: `lib/voice-to-text/implementations/` contains specific APIs
+- **Component**: `components/VoiceInput.tsx` uses the adapter, not specific implementations
+
+This allows switching voice APIs without changing the component code.
 
 ## Quick Reference
 
@@ -233,6 +281,19 @@ app/
   - `location` (text) - suburb/city format
   - `languages` (text[]) - array of languages
   - `accessibility_needs` (text[]) - array of accessibility requirements
+
+- **`lawyer_profiles`** - Lawyer user data (1:1 with profiles where role='lawyer') ✅ (SQL script in `/project_overview/create_lawyer_profiles_table.sql`)
+  - `id` (uuid, FK to profiles)
+  - `first_name`, `last_name` (text)
+  - `firm_name` (text, nullable)
+  - `location` (text) - city/region format
+  - `about` (text, nullable) - bio/description
+  - `phone` (text, nullable)
+  - `email` (text, nullable) - professional email
+  - `website` (text, nullable)
+  - `practice_areas` (text[]) - array of practice areas
+  - `languages` (text[]) - array of languages
+  - `accessibility_support` (text[]) - array of accessibility accommodations offered
 
 ### Row Level Security
 - Users can only read/write their own profile data

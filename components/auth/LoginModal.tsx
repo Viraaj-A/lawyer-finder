@@ -52,7 +52,7 @@ function LoginForm({
             </div>
           </div>
           <div className="flex flex-col gap-6">
-            <div className="grid gap-3">
+            <div className="flex flex-col gap-3">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
@@ -62,7 +62,7 @@ function LoginForm({
                 required
               />
             </div>
-            <div className="grid gap-3">
+            <div className="flex flex-col gap-3">
               <Label htmlFor="password">Password</Label>
               <Input
                 id="password"

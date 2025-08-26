@@ -3,10 +3,22 @@ import { LoginButton } from "@/components/auth/LoginButton";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/app/actions/auth";
 import { Button } from "@/components/ui/button";
+import { AlertCircle } from "lucide-react";
 
 export async function Header() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  
+  // Get user profile status if logged in
+  let profile = null;
+  if (user) {
+    const { data } = await supabase
+      .from('profiles')
+      .select('role, onboarding_completed')
+      .eq('id', user.id)
+      .single();
+    profile = data;
+  }
   
   // Get initials for avatar
   const getInitials = (email: string) => {
@@ -59,17 +71,45 @@ export async function Header() {
       
       {user ? (
         <div className="flex items-center space-x-4">
+          {!profile?.onboarding_completed && (
+            <Link href={!profile?.role ? '/onboarding' : profile.role === 'lawyer' ? '/onboarding/lawyer' : '/onboarding/individual'}>
+              <Button variant="outline" size="sm" className="border-yellow-600 text-yellow-700 hover:bg-yellow-50">
+                <AlertCircle className="h-4 w-4 mr-2" />
+                Complete Profile
+              </Button>
+            </Link>
+          )}
+          
+          {profile?.onboarding_completed && (
+            <Link href={profile.role === 'lawyer' ? '/dashboard/lawyer' : '/dashboard/individual'}>
+              <Button variant="ghost" size="sm">
+                Dashboard
+              </Button>
+            </Link>
+          )}
+          
           <form action={signOut}>
             <Button variant="ghost" size="sm" type="submit">
               Sign out
             </Button>
           </form>
+          
           <div className="flex items-center space-x-3">
-            <span className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-semibold">
-              {getInitials(user.email || '')}
-            </span>
+            <div className="relative">
+              <span className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white font-semibold">
+                {getInitials(user.email || '')}
+              </span>
+              {!profile?.onboarding_completed && (
+                <span className="absolute -top-1 -right-1 h-3 w-3 bg-yellow-500 rounded-full border-2 border-white" />
+              )}
+            </div>
             <div className="text-right">
               <p className="text-sm text-muted-foreground">{user.email}</p>
+              {profile?.role && (
+                <p className="text-xs text-muted-foreground capitalize">
+                  {profile.role} {!profile.onboarding_completed && '(Incomplete)'}
+                </p>
+              )}
             </div>
           </div>
         </div>

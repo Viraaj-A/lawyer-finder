@@ -28,8 +28,19 @@ async function saveProfile(formData: FormData) {
     accessibilityNeeds.push(otherAccessibility)
   }
   
+  // Debug: Log form data
+  console.log('Form data:', {
+    firstName: formData.get('firstName'),
+    lastName: formData.get('lastName'),
+    age: formData.get('age'),
+    gender: formData.get('gender'),
+    location: formData.get('location'),
+    languages,
+    accessibilityNeeds
+  })
+
   // Save to individual_profiles table
-  const { error } = await supabase
+  const { error, data } = await supabase
     .from('individual_profiles')
     .upsert({
       id: user.id,
@@ -43,15 +54,22 @@ async function saveProfile(formData: FormData) {
     })
   
   if (error) {
-    console.error('Profile save error:', error)
+    console.error('Individual profile save error:', error)
+    // Don't redirect on error, let user see what happened
     return
   }
+
+  console.log('Individual profile saved:', data)
   
   // Mark onboarding as complete
-  await supabase
+  const { error: profileError } = await supabase
     .from('profiles')
     .update({ onboarding_completed: true })
     .eq('id', user.id)
+    
+  if (profileError) {
+    console.error('Profile update error:', profileError)
+  }
   
   redirect('/')
 }
@@ -122,7 +140,7 @@ export default async function IndividualProfilePage() {
                   <SelectItem value="male">Male</SelectItem>
                   <SelectItem value="female">Female</SelectItem>
                   <SelectItem value="non-binary">Non-binary</SelectItem>
-                  <SelectItem value="female">A gender not listed here</SelectItem>
+                  <SelectItem value="other">A gender not listed here</SelectItem>
                   <SelectItem value="prefer-not-to-say">Prefer not to say</SelectItem>
                 </SelectContent>
               </Select>
