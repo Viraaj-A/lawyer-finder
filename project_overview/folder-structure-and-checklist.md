@@ -100,6 +100,13 @@ app/
     ├── Header.tsx                # Global header with auth state ✅ (exists)
     ├── Footer.tsx                # Global footer ✅ (exists)
     └── ProtectedRoute.tsx        # Authentication wrapper
+
+api/                               # Flask/Python Backend (for AI features)
+├── index.py                       # Flask app entry point
+├── requirements.txt               # Python dependencies
+└── routes/                        # AI endpoints (/api/ai/*)
+
+next.config.js                     # Configures Flask proxy for /api/ai/* routes
 ```
 
 ## Implementation Checklist
@@ -149,12 +156,12 @@ app/
 **Priority: MEDIUM - Main functionality**
 
 #### Landing Page Enhancements
-- [ ] `components/VoiceInput.tsx` - Modular voice input component (replaceable API)
-- [ ] `lib/voice-to-text/` - Voice-to-text API adapter folder
-- [ ] `lib/voice-to-text/adapter.ts` - Abstract interface for voice APIs
-- [ ] `lib/voice-to-text/implementations/` - Concrete implementations folder
-- [ ] Update `app/page.tsx` - Integrate voice input
-- [ ] Create dummy issue data structure (text only)
+- [x] `components/VoiceInput.tsx` - Modular voice input component (replaceable API) ✅ (exists)
+- [x] `lib/voice-to-text/` - Voice-to-text API adapter folder ✅ (exists)
+- [x] `lib/voice-to-text/adapter.ts` - Abstract interface for voice APIs ✅ (exists)
+- [x] `lib/voice-to-text/implementations/` - Concrete implementations folder ✅ (exists with google-cloud-adapter.ts)
+- [x] Update `app/page.tsx` - Integrate voice input ✅ (VoiceInput integrated)
+- [x] Create dummy issue data structure (text only) ✅ (submitIssue action saves text to DB)
 
 #### Search Functionality
 - [ ] `app/search/` - Create search folder
@@ -178,6 +185,9 @@ app/
 - [x] `app/dashboard/components/DashboardSidebar.tsx` - Sidebar navigation ✅
 - [x] `app/dashboard/individual/` - Create individual dashboard folder ✅
 - [x] `app/dashboard/individual/page.tsx` - My Issues page (landing after onboarding) ✅
+- [x] `app/dashboard/individual/page.tsx` - Integrate real issues from processed_issues table ✅
+- [x] `app/dashboard/individual/components/IssueEditModal.tsx` - Modal for editing issues ✅ (integrated in page.tsx)
+- [x] `app/dashboard/individual/components/IssuesList.tsx` - Issues list with filtering ✅ (integrated in page.tsx)
 - [x] `app/dashboard/individual/profile/page.tsx` - My Profile page ✅
 - [x] `app/dashboard/individual/settings/page.tsx` - Settings page ✅
 - [x] `app/dashboard/lawyer/` - Create lawyer dashboard folder ✅
@@ -222,22 +232,41 @@ app/
 - [ ] `app/api/lawyers/route.ts` - Lawyers list endpoint
 - [ ] `app/api/lawyers/[id]/` - Create dynamic lawyer API folder
 - [ ] `app/api/lawyers/[id]/route.ts` - Individual lawyer endpoint
-- [ ] `app/api/issues/` - Create issues API folder
-- [ ] `app/api/issues/route.ts` - Issues endpoints
-- [ ] `app/api/issues/[id]/` - Create dynamic issue API folder
-- [ ] `app/api/issues/[id]/route.ts` - Individual issue endpoint
+- [x] `app/api/issues/` - Create issues API folder ✅
+- [x] `app/api/issues/route.ts` - GET list with auto-processing, POST manual process ✅
+- [x] `app/api/issues/[id]/` - Create dynamic issue API folder ✅
+- [x] `app/api/issues/[id]/route.ts` - GET/PATCH/DELETE individual issue ✅
 - [ ] `app/api/search/` - Create search API folder
 - [ ] `app/api/search/route.ts` - Search endpoint
 
 ## Temporary Implementation Notes
 
-### Issue Submission Structure
-The landing page now saves submissions directly to the database:
-```typescript
-interface IssueSubmission {
-  text: string;        // Issue description from textarea or voice input
-}
-```
+### Hybrid Next.js + Flask Architecture
+- **Next.js** handles existing API routes (`/api/auth`, `/api/issues`, etc.)
+- **Flask** handles new AI/ML routes (`/api/ai/*`) for Python-based features
+- Routes to `/api/ai/*` are proxied to Flask via `next.config.js`
+- Local dev: Flask runs on port 5328, production: deploys as Vercel serverless functions
+
+### Issues Data Architecture
+
+#### Two-Table Design
+1. **`issue_submissions`** - Raw, immutable audit trail
+   - Stores exactly what user submitted via landing page
+   - Never modified after creation
+   - Used for audit and reprocessing
+
+2. **`processed_issues`** - Working data with status tracking
+   - References the raw submission
+   - User-editable title and description
+   - Tracks status ('active' | 'closed')
+   - Supports lawyer assignments
+   - Classification metadata for future AI categorization
+
+#### Issue Status Logic
+- Issues default to 'active' when created
+- Closed when user-lawyer agreement is reached
+- User can manually close/reopen issues
+- Tab filtering: All, Active (status='active'), Closed (status='closed')
 
 ### Voice-to-Text Modular Architecture
 The voice input feature uses an adapter pattern for easy API replacement:
@@ -274,6 +303,14 @@ This allows switching voice APIs without changing the component code.
   - `onboarding_completed` (boolean, default false)
   - Auto-created on user signup via trigger
 
+- **`issue_submissions`** - Raw issue submissions (audit trail) ✅
+  - `id` (uuid, primary key)
+  - `user_id` (uuid, FK to individual_profiles)
+  - `text_input` (text) - raw submission text
+  - `file_metadata` (jsonb) - file attachments metadata
+  - `created_at` (timestamp)
+  - Immutable after creation
+
 - **`individual_profiles`** - Individual user data (1:1 with profiles where role='individual')
   - `id` (uuid, FK to profiles)
   - `first_name`, `last_name` (text)
@@ -295,15 +332,69 @@ This allows switching voice APIs without changing the component code.
   - `languages` (text[]) - array of languages
   - `accessibility_support` (text[]) - array of accessibility accommodations offered
 
+- **`processed_issues`** - Processed issues with status (to be created)
+  - `id` (uuid, primary key)
+  - `submission_id` (uuid, FK to issue_submissions)
+  - `user_id` (uuid, FK to individual_profiles) - denormalized for performance
+  - `title` (text) - extracted or user-edited
+  - `description` (text) - can be edited by user
+  - `status` ('active' | 'closed')
+  - `lawyer_id` (uuid, FK to profiles, nullable)
+  - `classification` (jsonb) - for future AI categorization
+  - `created_at`, `updated_at` (timestamps)
+
 ### Row Level Security
 - Users can only read/write their own profile data
-- Policies enforced on both tables
+- Policies enforced on all tables
+- Issue submissions/processed issues restricted to owner
 
 ## Authentication Flow
 1. **Signup** → Creates auth.users record → Trigger creates profiles record → Redirects to onboarding
 2. **Onboarding** → User selects role → Saves to profiles.role → Redirects to role-specific form  
 3. **Profile Form** → Individual fills profile → Saves to individual_profiles → Marks onboarding_completed=true
 4. **Future Logins** → Checks onboarding_completed → Redirects completed users to home, incomplete to onboarding
+
+## Issues Workflow
+
+### Current Implementation
+1. **Submit Issue** → User submits on landing page → Creates `issue_submissions` record (raw, immutable)
+2. **Auto-Process** → Dashboard GET request automatically detects unprocessed submissions → Creates `processed_issues` records
+3. **Manage Issue** → User views/edits in dashboard → Updates only `processed_issues` table
+4. **Status Tracking** → Active by default → Closed on user-lawyer agreement or manual close
+5. **Tab Filtering** → All shows everything → Active shows status='active' → Closed shows status='closed'
+
+### Processing Details
+- **Automatic**: Happens transparently when dashboard loads (`GET /api/issues`)
+- **Title Extraction**: First line of text (max 100 chars)
+- **Description**: Full text from submission
+- **Default Status**: 'active' for all new issues
+- **No Manual Step**: Users don't need to trigger processing - it's automatic
+
+### Future Enhancement Paths
+1. **AI Classification** (Ready to implement)
+   - Analyze `issue_submissions.text_input`
+   - Update `processed_issues.classification` with categories/tags
+   - Suggest relevant lawyers based on classification
+
+2. **Lawyer Matching** (Ready to implement)
+   - Match based on `classification` and lawyer `practice_areas`
+   - Update `processed_issues.lawyer_id` when matched
+   - Send notifications to matched lawyers
+
+3. **Smart Title Generation** (Ready to implement)
+   - Use AI to generate better titles from submission text
+   - Update during processing phase
+   - Allow user override
+
+4. **Reprocessing Capability** (Architecture supports)
+   - Re-analyze old submissions with improved AI
+   - Original data preserved in `issue_submissions`
+   - Update `processed_issues` without data loss
+
+5. **Status Workflow** (Partially implemented)
+   - Current: active ↔ closed (manual)
+   - Future: pending → active → in_progress → resolved → closed
+   - Lawyer agreement triggers status changes
 
 ### Next Steps
 Start with Phase 1 to establish your foundation, then move through phases sequentially. Each phase builds on the previous one, ensuring a stable development process.
