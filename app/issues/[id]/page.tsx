@@ -6,7 +6,8 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Loader2, Search, MapPin, ChevronRight, Edit2, Plus, UserSearch } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Search, MapPin, ChevronRight, Edit2, Plus, UserSearch, Info, AlertTriangle, FileText, Clock, CheckCircle2 } from "lucide-react";
 import TransformedQuery from "./components/TransformedQuery";
 import LawyerList from "./components/LawyerList";
 import { createClient } from "@/lib/supabase/client";
@@ -16,8 +17,33 @@ interface TransformationResult {
   categories: Array<{
     title: string;
     category: string;
+    subcategory?: string;
+    url?: string;
     score: number;
   }>;
+}
+
+interface ArticleData {
+  article_id: string;
+  original_title: string;
+  original_url: string;
+  issue_title: string;
+  issue_category: string;
+  main_category: string;
+  subcategory: string;
+  processed_result: any;
+  has_situation_checklist: boolean;
+  has_lawyer_summary: boolean;
+  has_actions_taken: boolean;
+  has_documents_checklist: boolean;
+  has_information_panels: boolean;
+  has_next_steps_checklist: boolean;
+  has_resolution_options: boolean;
+  has_timeline_check: boolean;
+}
+
+interface CheckboxState {
+  [key: string]: boolean;
 }
 
 export default function IssueLawyerSearch() {
@@ -26,7 +52,10 @@ export default function IssueLawyerSearch() {
   
   const [originalQuery, setOriginalQuery] = useState("");
   const [transformedData, setTransformedData] = useState<TransformationResult | null>(null);
+  const [selectedArticle, setSelectedArticle] = useState<ArticleData | null>(null);
+  const [checkboxState, setCheckboxState] = useState<CheckboxState>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingArticle, setIsLoadingArticle] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
   // Search filters
@@ -90,6 +119,319 @@ export default function IssueLawyerSearch() {
     // TODO: Implement actual search when lawyer data is available
   };
 
+  const handleArticleSelect = async (title: string) => {
+    setIsLoadingArticle(true);
+    setCheckboxState({});
+    
+    try {
+      const supabase = createClient();
+      
+      // Fetch the article from Supabase using the title
+      const { data: article, error: fetchError } = await supabase
+        .from("articles")
+        .select("*")
+        .eq("original_title", title)
+        .single();
+
+      if (fetchError || !article) {
+        console.error("Error fetching article:", fetchError);
+        setError(`Could not fetch article: ${title}`);
+        return;
+      }
+
+      setSelectedArticle(article);
+    } catch (err) {
+      console.error("Error:", err);
+      setError("Failed to fetch article from database");
+    } finally {
+      setIsLoadingArticle(false);
+    }
+  };
+
+  const handleCheckboxToggle = (fieldName: string, itemId: string) => {
+    const key = `${fieldName}-${itemId}`;
+    setCheckboxState(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+
+  // Rendering functions for dynamic form fields
+  const renderSituationChecklist = (data: any) => (
+    <div className="space-y-3">
+      <h3 className="font-semibold flex items-center gap-2">
+        <CheckCircle2 className="h-5 w-5 text-green-600" />
+        Situation Checklist
+      </h3>
+      {data.description && (
+        <p className="text-sm text-gray-600">{data.description}</p>
+      )}
+      <div className="space-y-2">
+        {data.items.map((item: any) => (
+          <div key={item.id} className="flex items-start space-x-2">
+            <input
+              type="checkbox"
+              id={`situation-${item.id}`}
+              checked={checkboxState[`situation_checklist-${item.id}`] || false}
+              onChange={() => handleCheckboxToggle('situation_checklist', item.id)}
+              className="mt-1"
+            />
+            <div className="flex-1">
+              <label htmlFor={`situation-${item.id}`} className="text-sm cursor-pointer">
+                {item.label}
+                {item.importance && (
+                  <Badge 
+                    className="ml-2" 
+                    variant={item.importance === 'high' ? 'destructive' : item.importance === 'medium' ? 'default' : 'secondary'}
+                  >
+                    {item.importance}
+                  </Badge>
+                )}
+              </label>
+              {item.helper_text && (
+                <p className="text-xs text-gray-500 mt-1">{item.helper_text}</p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderActionsTaken = (data: any) => (
+    <div className="space-y-3">
+      <h3 className="font-semibold flex items-center gap-2">
+        <FileText className="h-5 w-5 text-blue-600" />
+        Actions Already Taken
+      </h3>
+      {data.description && (
+        <p className="text-sm text-gray-600">{data.description}</p>
+      )}
+      <div className="space-y-2">
+        {data.items.map((item: any) => (
+          <div key={item.id} className="flex items-start space-x-2">
+            <input
+              type="checkbox"
+              id={`actions-${item.id}`}
+              checked={checkboxState[`actions_taken-${item.id}`] || false}
+              onChange={() => handleCheckboxToggle('actions_taken', item.id)}
+              className="mt-1"
+            />
+            <div className="flex-1">
+              <label htmlFor={`actions-${item.id}`} className="text-sm cursor-pointer">
+                {item.label}
+              </label>
+              {item.helper_text && (
+                <p className="text-xs text-gray-500 mt-1">{item.helper_text}</p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderDocumentsChecklist = (data: any) => (
+    <div className="space-y-3">
+      <h3 className="font-semibold flex items-center gap-2">
+        <FileText className="h-5 w-5 text-purple-600" />
+        Documents Needed
+      </h3>
+      {data.description && (
+        <p className="text-sm text-gray-600">{data.description}</p>
+      )}
+      <div className="space-y-2">
+        {data.items.map((item: any) => (
+          <div key={item.id} className="flex items-start space-x-2">
+            <input
+              type="checkbox"
+              id={`docs-${item.id}`}
+              checked={checkboxState[`documents_checklist-${item.id}`] || false}
+              onChange={() => handleCheckboxToggle('documents_checklist', item.id)}
+              className="mt-1"
+            />
+            <div className="flex-1">
+              <label htmlFor={`docs-${item.id}`} className="text-sm cursor-pointer">
+                {item.label}
+                {item.required && <span className="text-red-500 ml-1">*</span>}
+              </label>
+              {item.helper_text && (
+                <p className="text-xs text-gray-500 mt-1">{item.helper_text}</p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderTimelineCheck = (data: any) => (
+    <div className="space-y-3">
+      <h3 className="font-semibold flex items-center gap-2">
+        <Clock className="h-5 w-5 text-orange-600" />
+        Timeline Check
+      </h3>
+      {data.description && (
+        <p className="text-sm text-gray-600">{data.description}</p>
+      )}
+      <div className="space-y-3">
+        {data.items.map((item: any) => (
+          <div key={item.id} className="border-l-2 border-orange-200 pl-4 py-2">
+            <p className="text-sm font-medium">{item.label}</p>
+            {item.details && (
+              <p className="text-xs text-gray-600 mt-1">{item.details}</p>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderInformationPanels = (panels: any[]) => (
+    <div className="space-y-3">
+      <h3 className="font-semibold text-lg">Important Information</h3>
+      {panels.sort((a, b) => (a.priority || 0) - (b.priority || 0)).map((panel, index) => (
+        <div 
+          key={index} 
+          className={`border rounded-lg p-4 w-full ${
+            panel.type === 'warning' 
+              ? 'border-orange-200 bg-orange-50' 
+              : 'border-blue-200 bg-blue-50'
+          }`}
+        >
+          <div className="flex gap-3">
+            {panel.type === 'warning' ? (
+              <AlertTriangle className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
+            ) : (
+              <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            )}
+            <div className="flex-1">
+              <span className="font-medium">{panel.title}</span>
+              <p className="text-sm mt-1 text-gray-600">{panel.content}</p>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  const renderNextSteps = (data: any) => (
+    <div className="space-y-3">
+      <h3 className="font-semibold flex items-center gap-2">
+        <ChevronRight className="h-5 w-5 text-green-600" />
+        Next Steps
+      </h3>
+      {data.description && (
+        <p className="text-sm text-gray-600">{data.description}</p>
+      )}
+      <div className="space-y-3">
+        {data.items.sort((a: any, b: any) => (a.order || 0) - (b.order || 0)).map((item: any) => (
+          <div key={item.id} className="flex gap-3">
+            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-semibold">
+              {item.order || '•'}
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium">
+                {item.label}
+                {item.urgency && (
+                  <Badge 
+                    className="ml-2" 
+                    variant={item.urgency === 'immediate' ? 'destructive' : 'secondary'}
+                  >
+                    {item.urgency}
+                  </Badge>
+                )}
+              </p>
+              {item.details && (
+                <p className="text-xs text-gray-600 mt-1">{item.details}</p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderResolutionOptions = (data: any) => (
+    <div className="space-y-3">
+      <h3 className="font-semibold">Resolution Options</h3>
+      {data.description && (
+        <p className="text-sm text-gray-600">{data.description}</p>
+      )}
+      <div className="space-y-3">
+        {data.items.map((option: any) => (
+          <Card key={option.id} className="p-4">
+            <h4 className="font-medium text-sm mb-2">{option.label}</h4>
+            <div className="space-y-1 text-xs">
+              {option.method && (
+                <div>
+                  <span className="text-gray-500">Method:</span> {option.method}
+                </div>
+              )}
+              {option.body && (
+                <div>
+                  <span className="text-gray-500">Body:</span> {option.body}
+                </div>
+              )}
+            </div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderDynamicForm = () => {
+    if (!selectedArticle) return null;
+    
+    const processed = selectedArticle.processed_result;
+    if (!processed) return <p className="text-gray-500">No form data available for this article.</p>;
+    
+    return (
+      <div className="space-y-6">
+        {/* Information Panels - Full width at top */}
+        {'information_panels' in processed && processed.information_panels && (
+          <div className="w-full">
+            {renderInformationPanels(processed.information_panels)}
+          </div>
+        )}
+        
+        {/* Other sections in responsive grid - excluding lawyer summary */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {'situation_checklist' in processed && processed.situation_checklist && (
+            <div className="border rounded-lg p-4 bg-white">
+              {renderSituationChecklist(processed.situation_checklist)}
+            </div>
+          )}
+          {'actions_taken' in processed && processed.actions_taken && (
+            <div className="border rounded-lg p-4 bg-white">
+              {renderActionsTaken(processed.actions_taken)}
+            </div>
+          )}
+          {'documents_checklist' in processed && processed.documents_checklist && (
+            <div className="border rounded-lg p-4 bg-white">
+              {renderDocumentsChecklist(processed.documents_checklist)}
+            </div>
+          )}
+          {'timeline_check' in processed && processed.timeline_check && (
+            <div className="border rounded-lg p-4 bg-white">
+              {renderTimelineCheck(processed.timeline_check)}
+            </div>
+          )}
+          {'next_steps_checklist' in processed && processed.next_steps_checklist && (
+            <div className="border rounded-lg p-4 bg-white">
+              {renderNextSteps(processed.next_steps_checklist)}
+            </div>
+          )}
+          {'resolution_options' in processed && processed.resolution_options && (
+            <div className="border rounded-lg p-4 bg-white">
+              {renderResolutionOptions(processed.resolution_options)}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -108,69 +450,120 @@ export default function IssueLawyerSearch() {
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Summary of Enquiry Card */}
-        <Card className="mb-8 p-6">
-          <h2 className="text-xl font-bold mb-2">Summary of Your Enquiry</h2>
-          <p className="text-gray-600 mb-6">
-            <span className="font-medium text-gray-800">Type of Legal Issue:</span>{" "}
-            {primaryCategory}
-          </p>
-          
-          <div className="mb-6">
-            <label 
-              className="block text-sm font-medium text-gray-700 mb-2" 
-              htmlFor="case-summary"
-            >
-              Brief Summary of Events
-            </label>
-            <Textarea
-              id="case-summary"
-              className="w-full min-h-[100px]"
-              placeholder="Briefly describe what happened..."
-              value={transformedData?.formal_query || originalQuery}
-              onChange={(e) => setTransformedData(prev => 
-                prev ? {...prev, formal_query: e.target.value} : null
-              )}
-            />
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {transformedData?.categories && transformedData.categories.length > 0 ? (
-              transformedData.categories.slice(0, 3).map((category, index) => (
-                <Button 
-                  key={index}
-                  variant="outline"
-                  className="h-auto min-h-[3rem] py-3 px-4 whitespace-normal text-left"
-                  onClick={() => console.log(`Selected: ${category.title}`)}
-                >
-                  <span className="text-sm break-words w-full">{category.title}</span>
-                </Button>
-              ))
-            ) : (
+        {!selectedArticle ? (
+          <Card className="mb-8 p-6">
+            <h2 className="text-xl font-bold mb-2">Summary of Your Enquiry</h2>
+            
+            {/* Show article selection if we have categories */}
+            {transformedData?.categories && transformedData.categories.length > 0 && (
               <>
-                <Button 
-                  variant="outline" 
-                  className="flex items-center justify-center gap-2"
-                >
-                  <Edit2 className="h-4 w-4" />
-                  Edit Enquiry
-                </Button>
-                <Button 
-                  variant="outline"
-                  className="flex items-center justify-center gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add More Detail
-                </Button>
-                <Button 
-                  className="flex items-center justify-center gap-2"
-                >
-                  <UserSearch className="h-4 w-4" />
-                  Find a Lawyer
-                </Button>
+                <p className="text-sm text-gray-600 mb-4">
+                  Based on your description, we've identified these relevant legal topics:
+                </p>
+                
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Your Issue (Legal Formulation)
+                  </label>
+                  <Textarea
+                    className="w-full min-h-[80px]"
+                    value={transformedData?.formal_query || originalQuery}
+                    readOnly
+                  />
+                </div>
+                
+                <p className="text-sm font-medium mb-4">Does your issue relate to any of the following topics?</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {transformedData.categories.slice(0, 3).map((category, index) => (
+                    <Button 
+                      key={index}
+                      variant="outline"
+                      className="h-auto min-h-[3rem] py-3 px-4 whitespace-normal text-left"
+                      onClick={() => handleArticleSelect(category.title)}
+                      disabled={isLoadingArticle}
+                    >
+                      <span className="text-sm break-words w-full">{category.title}</span>
+                    </Button>
+                  ))}
+                </div>
               </>
             )}
-          </div>
-        </Card>
+            
+            {/* Show loading or error state */}
+            {isLoadingArticle && (
+              <div className="mt-4 p-4 text-center">
+                <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2 text-blue-600" />
+                <p className="text-sm text-gray-600">Loading article details...</p>
+              </div>
+            )}
+          </Card>
+        ) : (
+          /* Dynamic Form when article is selected */
+          <Card className="mb-8 p-6">
+            <h2 className="text-xl font-bold mb-2">Summary of Your Enquiry</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Based on your description, we've identified this relevant legal topic:
+            </p>
+            
+            <div className="bg-gray-50 rounded-lg p-4 mb-4">
+              <h3 className="font-semibold text-lg mb-1">{selectedArticle.original_title}</h3>
+              <p className="text-sm text-gray-600">
+                <span className="font-medium">Category:</span> {selectedArticle.main_category} → {selectedArticle.subcategory}
+              </p>
+              {selectedArticle.original_url && (
+                <p className="text-sm text-gray-500 mt-1">
+                  <a href={selectedArticle.original_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                    View original article →
+                  </a>
+                </p>
+              )}
+            </div>
+            
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Your Issue (Legal Formulation)
+              </label>
+              <Textarea
+                className="w-full min-h-[80px]"
+                value={transformedData?.formal_query || originalQuery}
+                readOnly
+              />
+            </div>
+            
+            {/* Dynamic Form Fields */}
+            {renderDynamicForm()}
+            
+            {/* Submit Button */}
+            <div className="mt-6 pt-6 border-t">
+              <Button 
+                className="w-full"
+                onClick={() => {
+                  const checkedItems = Object.entries(checkboxState)
+                    .filter(([_, value]) => value)
+                    .map(([key]) => key);
+                  console.log("Selected article:", selectedArticle.article_id);
+                  console.log("Checked items:", checkedItems);
+                  // TODO: Navigate to lawyer search with this data
+                }}
+              >
+                Continue to Find Lawyers
+              </Button>
+            </div>
+            
+            {/* Back button to select different article */}
+            <div className="mt-4 text-center">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setSelectedArticle(null);
+                  setCheckboxState({});
+                }}
+              >
+                ← Choose a different topic
+              </Button>
+            </div>
+          </Card>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Sidebar Filters */}
