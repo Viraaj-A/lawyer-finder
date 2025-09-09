@@ -38,14 +38,18 @@ export default function Home() {
         if (result.error.includes("logged in")) {
           setTimeout(() => router.push("/login"), 2000);
         }
-      } else {
+      } else if (result.issueId) {
         setSuccess(true);
         // Clear form
         setLegalIssue("");
-        // Show success message
+        // Show success message and redirect to lawyer search with transformation
         setTimeout(() => {
-          setSuccess(false);
-          // Optionally redirect to dashboard
+          router.push(`/issues/${result.issueId}`);
+        }, 1500);
+      } else {
+        setSuccess(true);
+        // Fallback to dashboard if no issueId
+        setTimeout(() => {
           router.push("/dashboard/individual");
         }, 2000);
       }
@@ -91,7 +95,7 @@ export default function Home() {
               {/* Success Message */}
               {success && (
                 <div className="bg-green-50 border border-green-200 text-green-800 rounded-lg p-3 text-sm">
-                  ✓ Issue submitted successfully! Redirecting to dashboard...
+                  ✓ Issue submitted successfully! Finding relevant lawyers...
                 </div>
               )}
               

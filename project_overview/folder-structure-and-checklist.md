@@ -104,7 +104,9 @@ app/
 api/                               # Flask/Python Backend (for AI features)
 ├── index.py                       # Flask app entry point
 ├── requirements.txt               # Python dependencies
+├── .env                           # Database credentials (uses same Supabase as main app)
 └── routes/                        # AI endpoints (/api/ai/*)
+    └── legal_transform.py         # POST /api/ai/transform endpoint
 
 next.config.js                     # Configures Flask proxy for /api/ai/* routes
 ```
@@ -203,13 +205,13 @@ next.config.js                     # Configures Flask proxy for /api/ai/* routes
 ### Phase 5: Legal Issues & Communication
 **Priority: MEDIUM - Core workflow**
 
-#### Legal Issues
+#### Legal Issues & Lawyer Matching
 - [ ] `app/issues/` - Create issues folder
 - [ ] `app/issues/[id]/` - Create dynamic id folder
-- [ ] `app/issues/[id]/page.tsx` - Issue review page
+- [ ] `app/issues/[id]/page.tsx` - Issue-specific lawyer search (with transformed query)
 - [ ] `app/issues/[id]/components/` - Create issue components folder
-- [ ] `app/issues/[id]/components/IssueDetails.tsx` - Issue details component
-- [ ] `app/issues/[id]/components/LawyerList.tsx` - Lawyer list component
+- [ ] `app/issues/[id]/components/TransformedQuery.tsx` - Display formal legal query
+- [ ] `app/issues/[id]/components/LawyerList.tsx` - Lawyer list component (placeholder for now)
 
 #### Messaging System
 - [ ] `app/messages/` - Create messages folder
@@ -246,6 +248,37 @@ next.config.js                     # Configures Flask proxy for /api/ai/* routes
 - **Flask** handles new AI/ML routes (`/api/ai/*`) for Python-based features
 - Routes to `/api/ai/*` are proxied to Flask via `next.config.js`
 - Local dev: Flask runs on port 5328, production: deploys as Vercel serverless functions
+
+### Legal Query Transformation (Temporary Implementation)
+
+#### Implementation Flow
+1. **User submits issue** on home page → saves to `issue_submissions` → redirects to `/issues/[id]`
+2. **Issue page loads** → shows "Processing..." while calling Flask
+3. **Flask endpoint** (`POST /api/ai/transform`):
+   - Converts informal → formal legal text via Predibase
+   - Searches `legal_articles` table for top 3 categories
+   - Returns transformed query + categories
+4. **Page displays**:
+   - Transformed formal query
+   - Top 3 legal categories
+   - Placeholder lawyer cards (no real data yet)
+   - Location filter
+
+#### Flask Setup Requirements
+- **Dependencies**: Flask, psycopg2-binary, sentence-transformers, requests, python-dotenv
+- **Database**: Connects to existing Supabase PostgreSQL with `legal_articles` table
+- **API Keys**: Predibase API for text transformation
+- **Endpoint**: `POST /api/ai/transform` accepts `{"text": "user issue"}`
+
+#### To Make Permanent (Future)
+1. **Populate lawyer data** in `lawyer_profiles` table
+2. **Map practice areas** to legal categories
+3. **Implement matching algorithm** based on:
+   - Category match score
+   - Location proximity
+   - Language preferences
+4. **Save transformation results** to `processed_issues.classification`
+5. **Track lawyer suggestions** for analytics
 
 ### Issues Data Architecture
 
