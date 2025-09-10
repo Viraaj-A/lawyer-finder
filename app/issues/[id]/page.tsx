@@ -290,28 +290,30 @@ export default function IssueLawyerSearch() {
   const renderInformationPanels = (panels: any[]) => (
     <div className="space-y-3">
       <h3 className="font-semibold text-lg">Important Information</h3>
-      {panels.sort((a, b) => (a.priority || 0) - (b.priority || 0)).map((panel, index) => (
-        <div 
-          key={index} 
-          className={`border rounded-lg p-4 w-full ${
-            panel.type === 'warning' 
-              ? 'border-orange-200 bg-orange-50' 
-              : 'border-blue-200 bg-blue-50'
-          }`}
-        >
-          <div className="flex gap-3">
-            {panel.type === 'warning' ? (
-              <AlertTriangle className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
-            ) : (
-              <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-            )}
-            <div className="flex-1">
-              <span className="font-medium">{panel.title}</span>
-              <p className="text-sm mt-1 text-gray-600">{panel.content}</p>
+      <div className="flex flex-wrap gap-3">
+        {panels.sort((a, b) => (a.priority || 0) - (b.priority || 0)).map((panel, index) => (
+          <div 
+            key={index} 
+            className={`flex-1 min-w-[280px] border rounded-lg p-4 ${
+              panel.type === 'warning' 
+                ? 'border-orange-200 bg-orange-50' 
+                : 'border-blue-200 bg-blue-50'
+            }`}
+          >
+            <div className="flex gap-3">
+              {panel.type === 'warning' ? (
+                <AlertTriangle className="h-5 w-5 text-orange-600 flex-shrink-0 mt-0.5" />
+              ) : (
+                <Info className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              )}
+              <div className="flex-1">
+                <span className="font-medium">{panel.title}</span>
+                <p className="text-sm mt-1 text-gray-600">{panel.content}</p>
+              </div>
             </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 
@@ -386,6 +388,46 @@ export default function IssueLawyerSearch() {
     const processed = selectedArticle.processed_result;
     if (!processed) return <p className="text-gray-500">No form data available for this article.</p>;
     
+    // Collect all available sections
+    const sections = [];
+    
+    if ('situation_checklist' in processed && processed.situation_checklist) {
+      sections.push({
+        key: 'situation_checklist',
+        content: renderSituationChecklist(processed.situation_checklist)
+      });
+    }
+    if ('actions_taken' in processed && processed.actions_taken) {
+      sections.push({
+        key: 'actions_taken',
+        content: renderActionsTaken(processed.actions_taken)
+      });
+    }
+    if ('documents_checklist' in processed && processed.documents_checklist) {
+      sections.push({
+        key: 'documents_checklist',
+        content: renderDocumentsChecklist(processed.documents_checklist)
+      });
+    }
+    if ('timeline_check' in processed && processed.timeline_check) {
+      sections.push({
+        key: 'timeline_check',
+        content: renderTimelineCheck(processed.timeline_check)
+      });
+    }
+    if ('next_steps_checklist' in processed && processed.next_steps_checklist) {
+      sections.push({
+        key: 'next_steps_checklist',
+        content: renderNextSteps(processed.next_steps_checklist)
+      });
+    }
+    if ('resolution_options' in processed && processed.resolution_options) {
+      sections.push({
+        key: 'resolution_options',
+        content: renderResolutionOptions(processed.resolution_options)
+      });
+    }
+    
     return (
       <div className="space-y-6">
         {/* Information Panels - Full width at top */}
@@ -395,38 +437,13 @@ export default function IssueLawyerSearch() {
           </div>
         )}
         
-        {/* Other sections in responsive grid - excluding lawyer summary */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {'situation_checklist' in processed && processed.situation_checklist && (
-            <div className="border rounded-lg p-4 bg-white">
-              {renderSituationChecklist(processed.situation_checklist)}
+        {/* Simple 2-column grid for all sections */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {sections.map(section => (
+            <div key={section.key} className="border rounded-lg p-4 bg-white">
+              {section.content}
             </div>
-          )}
-          {'actions_taken' in processed && processed.actions_taken && (
-            <div className="border rounded-lg p-4 bg-white">
-              {renderActionsTaken(processed.actions_taken)}
-            </div>
-          )}
-          {'documents_checklist' in processed && processed.documents_checklist && (
-            <div className="border rounded-lg p-4 bg-white">
-              {renderDocumentsChecklist(processed.documents_checklist)}
-            </div>
-          )}
-          {'timeline_check' in processed && processed.timeline_check && (
-            <div className="border rounded-lg p-4 bg-white">
-              {renderTimelineCheck(processed.timeline_check)}
-            </div>
-          )}
-          {'next_steps_checklist' in processed && processed.next_steps_checklist && (
-            <div className="border rounded-lg p-4 bg-white">
-              {renderNextSteps(processed.next_steps_checklist)}
-            </div>
-          )}
-          {'resolution_options' in processed && processed.resolution_options && (
-            <div className="border rounded-lg p-4 bg-white">
-              {renderResolutionOptions(processed.resolution_options)}
-            </div>
-          )}
+          ))}
         </div>
       </div>
     );
@@ -452,33 +469,40 @@ export default function IssueLawyerSearch() {
         {/* Summary of Enquiry Card */}
         {!selectedArticle ? (
           <Card className="mb-8 p-6">
-            <h2 className="text-xl font-bold mb-2">Summary of Your Enquiry</h2>
-            
             {/* Show article selection if we have categories */}
             {transformedData?.categories && transformedData.categories.length > 0 && (
               <>
-                <p className="text-sm text-gray-600 mb-4">
-                  Based on your description, we've identified these relevant legal topics:
-                </p>
-                
-                <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Your Issue (Legal Formulation)
-                  </label>
-                  <Textarea
-                    className="w-full min-h-[80px]"
-                    value={transformedData?.formal_query || originalQuery}
-                    readOnly
-                  />
+                {/* Side-by-side display of original and legal formulation */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <h3 className="text-base font-semibold text-gray-900 mb-2">
+                      Your Original Issue
+                    </h3>
+                    <Textarea
+                      className="w-full min-h-[100px] bg-gray-50"
+                      value={originalQuery}
+                      readOnly
+                    />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold text-gray-900 mb-2">
+                      Legal Formulation
+                    </h3>
+                    <Textarea
+                      className="w-full min-h-[100px] bg-blue-50"
+                      value={transformedData?.formal_query || originalQuery}
+                      readOnly
+                    />
+                  </div>
                 </div>
                 
-                <p className="text-sm font-medium mb-4">Does your issue relate to any of the following topics?</p>
+                <h3 className="text-base font-semibold text-center mb-3">Does your issue relate to any of the following topics?</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   {transformedData.categories.slice(0, 3).map((category, index) => (
                     <Button 
                       key={index}
                       variant="outline"
-                      className="h-auto min-h-[3rem] py-3 px-4 whitespace-normal text-left"
+                      className="h-auto min-h-[3rem] py-3 px-4 whitespace-normal text-center"
                       onClick={() => handleArticleSelect(category.title)}
                       disabled={isLoadingArticle}
                     >
@@ -500,34 +524,30 @@ export default function IssueLawyerSearch() {
         ) : (
           /* Dynamic Form when article is selected */
           <Card className="mb-8 p-6">
-            <h2 className="text-xl font-bold mb-2">Summary of Your Enquiry</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Based on your description, we've identified this relevant legal topic:
-            </p>
+            <h2 className="text-xl font-bold mb-4">{selectedArticle.original_title}</h2>
             
-            <div className="bg-gray-50 rounded-lg p-4 mb-4">
-              <h3 className="font-semibold text-lg mb-1">{selectedArticle.original_title}</h3>
-              <p className="text-sm text-gray-600">
-                <span className="font-medium">Category:</span> {selectedArticle.main_category} → {selectedArticle.subcategory}
-              </p>
-              {selectedArticle.original_url && (
-                <p className="text-sm text-gray-500 mt-1">
-                  <a href={selectedArticle.original_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                    View original article →
-                  </a>
-                </p>
-              )}
-            </div>
-            
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Your Issue (Legal Formulation)
-              </label>
-              <Textarea
-                className="w-full min-h-[80px]"
-                value={transformedData?.formal_query || originalQuery}
-                readOnly
-              />
+            {/* Side-by-side display of original and legal formulation */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900 mb-2">
+                  Your Original Issue
+                </h3>
+                <Textarea
+                  className="w-full min-h-[100px] bg-gray-50"
+                  value={originalQuery}
+                  readOnly
+                />
+              </div>
+              <div>
+                <h3 className="text-base font-semibold text-gray-900 mb-2">
+                  Legal Formulation
+                </h3>
+                <Textarea
+                  className="w-full min-h-[100px] bg-blue-50"
+                  value={transformedData?.formal_query || originalQuery}
+                  readOnly
+                />
+              </div>
             </div>
             
             {/* Dynamic Form Fields */}
@@ -630,20 +650,6 @@ export default function IssueLawyerSearch() {
               {primaryCategory} lawyers in {location}
             </h1>
 
-            {/* Categories Display - Optional, can be shown as tags */}
-            {transformedData?.categories && transformedData.categories.length > 0 && (
-              <div className="mb-6 flex items-center gap-2 flex-wrap">
-                <span className="text-sm text-gray-600">Related categories:</span>
-                {transformedData.categories.map((cat, index) => (
-                  <span 
-                    key={index}
-                    className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm"
-                  >
-                    {cat.category}
-                  </span>
-                ))}
-              </div>
-            )}
 
             {/* Lawyer List */}
             <LawyerList location={location} category={primaryCategory} />
